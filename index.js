@@ -11,7 +11,7 @@ app.use(cookieParser());
 
 // Middleware to handle CORS
 app.use((req, res, next) => {
-  const allowedOrigins = ["https://gomokuserver.vercel.app", "http://localhost:3000"];
+  const allowedOrigins = ["https://gomoku-server.vercel.app", "http://localhost:3000"];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
