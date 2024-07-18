@@ -30,8 +30,7 @@ const storage = new CloudinaryStorage({
 
 const parser = multer({ storage: storage });
 router.post('/user', async (req, res) => {
-  try {
-    console.log("entered");
+  try { 
     
     // Check Authorization header for JWT token
     const authHeader = req.headers['authorization']; 
@@ -235,8 +234,7 @@ router.post("/saveuserData", async (req, res) => {
 });
 
 
-router.post("/contactemail", async (req, res) => {
-  console.log("entered" + req.body);
+router.post("/contactemail", async (req, res) => { 
   const { name, email, message } = req.body;
   if(!name || !email || !message) {
     return res.json({ status: "error", message: "Incomplete data provided." });
@@ -304,8 +302,7 @@ const generateNumericOTP = (length) => {
 
 router.post("/sendemail", async (req, res) => {
   
-  const { email } = req.body;
-  console.log("Entered" + email);
+  const { email } = req.body; 
   // Validate email input
   if (!email) {
     return res.status(400).json({
