@@ -1,41 +1,37 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const GameModels = require('../models/GameDetails');
-const PlayersCordinates = require('../models/PlayersCordinates');
-const bodyParser = require('body-parser');
+const GameModels = require("../models/GameDetails");
+const PlayersCordinates = require("../models/PlayersCordinates");
+const bodyParser = require("body-parser");
 router.use(bodyParser.json());
+
 const generateCodeId = () => {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
   for (let i = 0; i < 6; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
   }
   return result;
 };
 
-router.post('/generate-game-id', async (req, res) => {
-  const { playerName1 , id} = req.body;
-  try {
-    if (!playerName1) {
-      return res.status(404).json({
-        message: "player1 name is missing",
-        status: false
-      });
-    }
-    if (!id) {
-        return res.status(404).json({
-          message: "GameId is missing",
-          status: false
-        });
-    }
+router.post("/generate-game-id", async (req, res) => {
+  const { playerName1, id } = req.body;
+  if (!playerName1 || !id) {
+    return res.status(400).json({
+      message: `${!playerName1 ? "player1 name" : "GameId"} is missing`,
+      status: false,
+    });
+  }
 
+  try {
     const newGameId = generateCodeId();
     const newGame = new GameModels({
       gameId: newGameId,
-      playerName1: playerName1,
+      playerName1,
       createdOn: new Date(),
       createdBy: playerName1,
-      status: 'waiting',
+      status: "waiting",
       AuthorID: id,
     });
     await newGame.save();
@@ -45,28 +41,26 @@ router.post('/generate-game-id', async (req, res) => {
   }
 });
 
-router.post('/check-game-id', async (req, res) => {
-  const { gameId, playerName2 ,id } = req.body; 
+router.post("/check-game-id", async (req, res) => {
+  const { gameId, playerName2, id } = req.body;
+  if (!gameId || !playerName2 || !id) {
+    return res.status(400).json({
+      message: `${
+        !gameId ? "GameId" : !playerName2 ? "player2" : "Player ID"
+      } is missing`,
+      status: false,
+    });
+  }
+
   try {
-    if (!gameId || !playerName2) {
-      return res.status(404).json({
-        message: "player2 and gameId are missing",
-        status: false
-      });
-    }
-    if(!id){
-        return res.status(404).json({
-            message: "Player ID is missing",
-            status: false
-        });
-    }
     const game = await GameModels.findOne({ gameId: gameId });
     if (!game) {
       return res.status(404).json({
-        message: "GameId is not found",
-        status: false
+        message: "GameId not found",
+        status: false,
       });
     }
+
     const playersCordinate = new PlayersCordinates({
       GameDetails: game._id,
       gameId: gameId,
@@ -76,95 +70,100 @@ router.post('/check-game-id', async (req, res) => {
     game.playerName2 = playerName2;
     game.playerName2ID = id;
     await game.save();
+    // Emit an event to notify that Player 2 has joined
+    //  const io = req.app.get('io');
+    //  io.to(gameId).emit('player2-joined', { gameId, playerName2 });
 
     res.status(200).json({ game });
   } catch (error) {
-    res.status(500).json({ message: error.message });
     console.log("game id don't match");
+    res.status(500).json({ message: error.message });
   }
 });
 
-router.post('/store-coordinate', async (req, res) => {
-  // const { gameId, row, col, currentPlayer } = req.body;
-  const { gameId, row, col, currentPlayer } = req.body;
-  console.log(gameId);
-  console.log(row);
-  console.log("Type of row is:", typeof currentPlayer);
+router.post("/store-coordinate", async (req, res) => {
+  const { gameId, row, col, currentPlayer } = req.body; 
 
-  console.log(col);
-  console.log("Type of col is:", typeof currentPlayer);
-
-  console.log(currentPlayer);
-  console.log("Type of currentPlayer is:", typeof currentPlayer);
+  if (
+    !gameId ||
+    row === undefined ||
+    col === undefined ||
+    currentPlayer === undefined
+  ) {
+    return res.status(400).json({
+      message: "Missing required fields (gameId, row, col, currentPlayer)",
+      status: false,
+    });
+  }
 
   try {
-    // if (!gameId || row === undefined || col === undefined || currentPlayer === undefined)
-    if (!gameId || row === undefined || col === undefined || currentPlayer === undefined) {
-      return res.status(400).json({
-        message: "Missing required fields (gameId, row, col, currentPlayer)",
-        status: false
-      });
-    }
-
     const game = await GameModels.findOne({ gameId });
-    console.log("game is :", game);
     if (!game) {
       return res.status(404).json({
-        message: "GameId is not found",
-        status: false
+        message: "GameId not found",
+        status: false,
       });
     }
 
     let playersCordinate = await PlayersCordinates.findOne({ gameId });
-    console.log("Player cordinate is :", playersCordinate)
     if (!playersCordinate) {
       playersCordinate = new PlayersCordinates({ gameId });
     }
 
     if (currentPlayer === 1) {
       playersCordinate.player1Input.push({ row: row, col: col });
-      console.log("Db m cordinate save ho gya 1");
     } else if (currentPlayer === 2) {
       playersCordinate.player2Input.push({ row: row, col: col });
-      console.log("Db n cordinate save ho gya 2");
-    }
-    else {
+    } else {
       return res.status(400).json({
         message: "Invalid currentPlayer value",
-        status: false
+        status: false,
       });
     }
 
-    const winner = checkForWinner(playersCordinate.player1Input, playersCordinate.player2Input);
-    console.log('winner is :', winner);
+    const winner = checkForWinner(
+      playersCordinate.player1Input,
+      playersCordinate.player2Input
+    );
     if (winner) {
+      GameModels.status = "Win";
+
       playersCordinate.winner = winner;
+      if (winner === 1) {
+        GameModels.winner = AuthorID;
+      } else {
+        GameModels.winner = playerName2ID;
+      }
+      GameModels.save();
     }
 
-    playersCordinate.currentPlayer = playersCordinate.player1Input.length === playersCordinate.player2Input.length ? 1 : 2;
+    playersCordinate.currentPlayer =
+      playersCordinate.player1Input.length ===
+      playersCordinate.player2Input.length
+        ? 1
+        : 2;
 
     await playersCordinate.save();
 
     res.status(201).json({
       message: "Coordinates stored successfully",
       status: true,
-      playersCordinate: playersCordinate // Optional: Return winner information
+      playersCordinate: playersCordinate,
     });
   } catch (error) {
-    console.error("Error storing coordinates:", error);
     res.status(500).json({
       message: "Internal server error",
-      status: false
+      status: false,
     });
   }
 });
 
 function checkForWinner(player1Input, player2Input) {
   const directions = [
-    { dr: 1, dc: 0 },  // Horizontal
-    { dr: 0, dc: 1 },  // Vertical
-    { dr: 1, dc: 1 },  // Diagonal /
-    { dr: 1, dc: -1 }  // Diagonal \
+    { dr: 1, dc: 0 }, // Horizontal
+    { dr: 0, dc: 1 }, // Vertical
+    { dr: 1, dc: 1 }, // Diagonal /
+    { dr: 1, dc: -1 }, // Diagonal \
   ];
 
   const checkLine = (row, col, dr, dc, playerInput) => {
@@ -173,7 +172,7 @@ function checkForWinner(player1Input, player2Input) {
     // Check in the positive direction
     let r = row + dr;
     let c = col + dc;
-    while (playerInput.some(p => p.row === r && p.col === c)) {
+    while (playerInput.some((p) => p.row === r && p.col === c)) {
       count++;
       r += dr;
       c += dc;
@@ -182,12 +181,12 @@ function checkForWinner(player1Input, player2Input) {
     // Check in the negative direction
     r = row - dr;
     c = col - dc;
-    while (playerInput.some(p => p.row === r && p.col === c)) {
+    while (playerInput.some((p) => p.row === r && p.col === c)) {
       count++;
       r -= dr;
       c -= dc;
     }
-
+    console.log(count);
     return count >= 5;
   };
 
@@ -210,73 +209,88 @@ function checkForWinner(player1Input, player2Input) {
   return null;
 }
 
-router.get('/game-details', async (req, res) => {
+router.get("/game-details", async (req, res) => {
   const { gameId } = req.query;
+  if (!gameId) {
+    return res.status(400).json({
+      message: "Game ID is required",
+      status: false,
+    });
+  }
+
   try {
-    if (!gameId) {
-      console.log("Game ID is not found in query parameters");
-      return res.status(400).json({
-        message: "Game ID is required",
-        status: false
-      });
-    }
-
     const gameDetails = await GameModels.findOne({ gameId });
-
     if (!gameDetails) {
-      console.log("Game details not found for gameId:", gameId);
       return res.status(404).json({
         message: "Game details not found",
-        status: false
+        status: false,
       });
     }
 
-    return res.status(200).json({
-      gameDetails // Return gameDetails in the response
-    });
-
+    res.status(200).json({ gameDetails });
   } catch (error) {
-    console.error("Error fetching game details:", error.message);
-    return res.status(500).json({
+    res.status(500).json({
       message: "Internal server error",
-      status: false
+      status: false,
     });
   }
 });
 
+router.get("/winner-details", async (req, res) => {
+  const { gameId } = req.query;
+  if (!gameId) {
+    return res.status(400).json({
+      message: "Game ID is required",
+      status: false,
+    });
+  }
 
-router.get('/winner-details', async (req, res) => {
-  const { gameId } = req.query; // Use req.query to get parameters from query string
-  console.log("gameId IS for winner fetching",gameId);
   try {
-    if (!gameId) {
-      console.log("Game ID is not found in query parameters");
-      return res.status(400).json({
-        message: "Game ID is required",
-        status: false
-      });
-    }
-
     const gameDetails = await PlayersCordinates.findOne({ gameId });
-
     if (!gameDetails) {
-      console.log("Game details not found for gameId:", gameId);
       return res.status(404).json({
         message: "Game details not found",
-        status: false
+        status: false,
       });
     }
 
-    return res.status(200).json({
-      gameDetails // Return gameDetails in the response
-    });
-
+    res.status(200).json({ gameDetails });
   } catch (error) {
-    console.error("Error fetching game details:", error.message);
-    return res.status(500).json({
+    res.status(500).json({
       message: "Internal server error",
-      status: false
+      status: false,
     });
+  }
+});
+
+router.post("/all-matches", async (req, res) => {
+  const { id } = req.body;
+  try {
+    const authorId = id;
+    console.log(authorId);
+    if(!authorId){
+      return res.status(400).json({
+        message: "Author ID is required",
+        status: false,
+      });
+    }
+
+    const games = await GameModels.find({ AuthorID: authorId })
+    .populate('playerName2ID', 'name')
+    .populate('AuthorID', 'name')
+    .populate('winner', 'name')
+    .populate('createdOn', 'createdOn')
+    .populate('status' ,'status');
+
+    if (!games.length) {
+      return res
+        .status(404)
+        .json({ message: "No games found for this author" });
+    }
+    console.log("your game is " + games);
+    res.status(200).json({ game: games });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

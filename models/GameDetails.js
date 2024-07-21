@@ -32,6 +32,10 @@ const gameSchema = new mongoose.Schema({
     enum: ['Win','Lose','waiting'],
     default: 'waiting'
   },
+  winner : {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   AuthorID:{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

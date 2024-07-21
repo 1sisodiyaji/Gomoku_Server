@@ -1,14 +1,15 @@
 const express = require("express");
-const app = express();
 const bodyParser = require("body-parser"); 
 const cookieParser = require("cookie-parser");
 const { Server } = require('socket.io');
 const http = require('http');
+const cors = require('cors');
 require("dotenv").config();
 const database = require('./config/Database'); 
 const user = require( "./routes/user");
 const Game = require ( "./routes/Game");
 
+const app = express();
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser());
 
@@ -31,8 +32,6 @@ app.use((req, res, next) => {
 
 database();
 
-
-
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -43,8 +42,15 @@ const io = new Server(server, {
   },
 });
 
+app.use(cors({
+  origin:  ["http://localhost:3000" , "https://gomoku-gray.vercel.app"],
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
+
+
 io.on('connection', (socket) => {
-  console.log('New client connected');
+  console.log('connected ...');
 
   socket.on('move', (data) => {
     io.emit('move', data);
@@ -52,10 +58,9 @@ io.on('connection', (socket) => {
  
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
+    console.log('disconnected');
   });
 });
-
 
 
 app.use("/api/", user); 
@@ -66,8 +71,8 @@ app.get("/" , (req,res) => {
 });
 
 
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
+const port = process.env.PORT || 5057;
+server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
