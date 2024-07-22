@@ -255,14 +255,7 @@ router.post("/all-matches", async (req, res) => {
   const { id } = req.body;
   try {
     const ID = id;
-    console.log(ID);
-    if (!ID) {
-      return res.status(400).json({
-        message: "Author ID is required",
-        status: false,
-      });
-    }
-
+    
     const games = await GameModels.find({
       $or: [{ AuthorID: ID }, { playerName2ID: ID }]
     })
