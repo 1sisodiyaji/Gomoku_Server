@@ -15,13 +15,11 @@ const generateCodeId = () => {
   return result;
 };
 
-router.post("/generate-game-id", async (req, res) => {
+//Game entry Point
+router.post('/generate-game-id', async (req, res) => {
   const { playerName1, id } = req.body;
   if (!playerName1 || !id) {
-    return res.status(400).json({
-      message: `${!playerName1 ? "player1 name" : "GameId"} is missing`,
-      status: false,
-    });
+    return res.status(400).json({ message: 'Missing required fields' });
   }
 
   try {
@@ -31,16 +29,18 @@ router.post("/generate-game-id", async (req, res) => {
       playerName1,
       createdOn: new Date(),
       createdBy: playerName1,
-      status: "waiting",
+      status: 'waiting',
       AuthorID: id,
     });
     await newGame.save();
     res.status(201).json({ newGame });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error generating game ID:', error.message);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
+// Second Player entry Point
 router.post("/check-game-id", async (req, res) => {
   const { gameId, playerName2, id } = req.body;
   if (!gameId || !playerName2 || !id) {
@@ -69,11 +69,9 @@ router.post("/check-game-id", async (req, res) => {
 
     game.playerName2 = playerName2;
     game.playerName2ID = id;
+    game.status = 'playing';
     await game.save();
-    // Emit an event to notify that Player 2 has joined
-    //  const io = req.app.get('io');
-    //  io.to(gameId).emit('player2-joined', { gameId, playerName2 });
-
+   
     res.status(200).json({ game });
   } catch (error) {
     console.log("game id don't match");
@@ -81,15 +79,29 @@ router.post("/check-game-id", async (req, res) => {
   }
 });
 
-router.post("/store-coordinate", async (req, res) => {
-  const { gameId, row, col, currentPlayer } = req.body; 
+router.get("/game-details", async (req, res) => {
+  const { gameId } = req.query;
+  if (!gameId) {
+    return res.status(400).json({ status: false, message: "Game ID is required"});
+  }
 
-  if (
-    !gameId ||
-    row === undefined ||
-    col === undefined ||
-    currentPlayer === undefined
-  ) {
+  try {
+    const gameDetails = await GameModels.findOne({ gameId });
+    if (!gameDetails) {
+      return res.status(404).json({status: false , message: "Game details not found"});
+    } 
+    return res.status(200).json({status: true , message: "Fetched Suuccessfully" , gameDetails});
+
+  } catch (error) {
+    res.status(500).json({status: false,message: "Internal server error"});
+  }
+});
+
+ 
+router.post("/store-coordinate", async (req, res) => {
+  const { gameId, row, col, currentPlayer } = req.body;
+
+  if (!gameId || row === undefined || col === undefined || currentPlayer === undefined) {
     return res.status(400).json({
       message: "Missing required fields (gameId, row, col, currentPlayer)",
       status: false,
@@ -110,10 +122,18 @@ router.post("/store-coordinate", async (req, res) => {
       playersCordinate = new PlayersCordinates({ gameId });
     }
 
+    // Check if the coordinate is already selected
+    if (playersCordinate.player1Input.some((p) => p.row === row && p.col === col) || playersCordinate.player2Input.some((p) => p.row === row && p.col === col)) {
+      return res.status(400).json({
+        message: "Coordinate is already selected",
+        status: false,
+      });
+    }
+
     if (currentPlayer === 1) {
-      playersCordinate.player1Input.push({ row: row, col: col });
+      playersCordinate.player1Input.push({ row, col });
     } else if (currentPlayer === 2) {
-      playersCordinate.player2Input.push({ row: row, col: col });
+      playersCordinate.player2Input.push({ row, col });
     } else {
       return res.status(400).json({
         message: "Invalid currentPlayer value",
@@ -121,28 +141,24 @@ router.post("/store-coordinate", async (req, res) => {
       });
     }
 
-    const winner = checkForWinner(
-      playersCordinate.player1Input,
-      playersCordinate.player2Input
-    );
+    const winner = checkForWinner(playersCordinate.player1Input, playersCordinate.player2Input);
     if (winner) {
-      GameModels.status = "Win";
-
+      game.status = "Win";
       playersCordinate.winner = winner;
       if (winner === 1) {
-        GameModels.winner = AuthorID;
+        game.winner = game.AuthorID;
       } else {
-        GameModels.winner = playerName2ID;
+        game.winner = game.playerName2ID;
       }
-      GameModels.save();
+      await game.save();
+      await playersCordinate.save();
+      return res.status(201).json({
+        message: "Game is won by player " + winner,
+        status: true,
+      });
     }
 
-    playersCordinate.currentPlayer =
-      playersCordinate.player1Input.length ===
-      playersCordinate.player2Input.length
-        ? 1
-        : 2;
-
+    playersCordinate.currentPlayer = playersCordinate.player1Input.length === playersCordinate.player2Input.length ? 1 : 2;
     await playersCordinate.save();
 
     res.status(201).json({
@@ -186,7 +202,6 @@ function checkForWinner(player1Input, player2Input) {
       r -= dr;
       c -= dc;
     }
-    console.log(count);
     return count >= 5;
   };
 
@@ -209,57 +224,28 @@ function checkForWinner(player1Input, player2Input) {
   return null;
 }
 
-router.get("/game-details", async (req, res) => {
+
+router.get('/check-updates', async (req, res) => {
   const { gameId } = req.query;
   if (!gameId) {
-    return res.status(400).json({
-      message: "Game ID is required",
-      status: false,
-    });
+    return res.status(404).json({ message: 'Game ID is required' });
   }
 
   try {
-    const gameDetails = await GameModels.findOne({ gameId });
-    if (!gameDetails) {
-      return res.status(404).json({
-        message: "Game details not found",
-        status: false,
-      });
+    const game = await GameModels.findOne({ gameId });
+    if (!game) {
+      return res.status(404).json({ message: 'Game ID not found' });
     }
 
-    res.status(200).json({ gameDetails });
-  } catch (error) {
-    res.status(500).json({
-      message: "Internal server error",
-      status: false,
-    });
-  }
-});
-
-router.get("/winner-details", async (req, res) => {
-  const { gameId } = req.query;
-  if (!gameId) {
-    return res.status(400).json({
-      message: "Game ID is required",
-      status: false,
-    });
-  }
-
-  try {
-    const gameDetails = await PlayersCordinates.findOne({ gameId });
-    if (!gameDetails) {
-      return res.status(404).json({
-        message: "Game details not found",
-        status: false,
-      });
+    let playersCordinate = await PlayersCordinates.findOne({ gameId });
+    if (!playersCordinate) {
+      return res.status(404).json({ message: 'Player coordinates not found' });
     }
 
-    res.status(200).json({ gameDetails });
+    res.status(200).json({ playersCordinate });
   } catch (error) {
-    res.status(500).json({
-      message: "Internal server error",
-      status: false,
-    });
+    console.error('Error fetching game details:', error.message);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -293,5 +279,5 @@ router.post("/all-matches", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
-
+ 
 module.exports = router;
