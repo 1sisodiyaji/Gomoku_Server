@@ -1,4 +1,5 @@
 const express = require("express");
+const { spawn } = require('child_process');
 const bodyParser = require("body-parser"); 
 const cookieParser = require("cookie-parser"); 
 require("dotenv").config();
@@ -31,18 +32,42 @@ database();
 
 
 app.use("/api/", user); 
-app.use("/game/" , Game);
+app.use("/game/" , Game); 
+app.post('/game/ai', (req, res) => {
+  const { board, player, opponent } = req.body;
+  const pythonProcess = spawn('python3', ['gomoku.py']);
+  pythonProcess.stdin.write(JSON.stringify({ board, player, opponent }));
+  pythonProcess.stdin.end();
+
+  let dataString = '';
+
+  pythonProcess.stdout.on('end', () => {
+    const result = JSON.parse(dataString);
+    console.log(result);
+    res.json(result);
+  });
+
+  pythonProcess.stdout.on('data', (data) => {
+    dataString += data.toString();
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`stderr: ${data}`);
+  });
+
+  pythonProcess.on('close', (code) => {
+    console.log(`child process exited with code ${code}`);
+  });
+});
 
 app.get("/" , (req,res) => {
   res.json({message : "Hello from server"});
 });
 
 
+
 const port = process.env.PORT || 5057;
 app.listen(port, () => {
   console.log(`App is running on port ${port}`);
 });
-
-
-
 
