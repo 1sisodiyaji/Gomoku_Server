@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const feedbackSchema = new mongoose.Schema({
   name: {
     type: String,
+    trim : true,
     required: true,
   },
   email: {

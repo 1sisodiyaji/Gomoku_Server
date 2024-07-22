@@ -79,6 +79,7 @@ router.post("/check-game-id", async (req, res) => {
   }
 });
 
+// game details regularly fetching
 router.get("/game-details", async (req, res) => {
   const { gameId } = req.query;
   if (!gameId) {
@@ -98,6 +99,7 @@ router.get("/game-details", async (req, res) => {
 });
 
  
+//user cordinates as which cordinate should be saved
 router.post("/store-coordinate", async (req, res) => {
   const { gameId, row, col, currentPlayer } = req.body;
 
@@ -252,21 +254,24 @@ router.get('/check-updates', async (req, res) => {
 router.post("/all-matches", async (req, res) => {
   const { id } = req.body;
   try {
-    const authorId = id;
-    console.log(authorId);
-    if(!authorId){
+    const ID = id;
+    console.log(ID);
+    if (!ID) {
       return res.status(400).json({
         message: "Author ID is required",
         status: false,
       });
     }
 
-    const games = await GameModels.find({ AuthorID: authorId })
-    .populate('playerName2ID', 'name')
+    const games = await GameModels.find({
+      $or: [{ AuthorID: ID }, { playerName2ID: ID }]
+    })
+    .populate('playerName1', 'name')
+    .populate('playerName2', 'name')
     .populate('AuthorID', 'name')
     .populate('winner', 'name')
     .populate('createdOn', 'createdOn')
-    .populate('status' ,'status');
+    .populate('status', 'status');
 
     if (!games.length) {
       return res
@@ -279,5 +284,6 @@ router.post("/all-matches", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
  
 module.exports = router;

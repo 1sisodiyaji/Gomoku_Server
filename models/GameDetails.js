@@ -9,10 +9,12 @@ const gameSchema = new mongoose.Schema({
   },
   playerName1: {
     type: String,
+   trim : true,
     required: true
   },
   playerName2: {
     type: String,
+    trim : true,
     required: false // Assuming the second player may join later
   },
   playerName2ID:{
