@@ -4,7 +4,7 @@ const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const database = require('./config/Database'); 
 const user = require("./routes/user");
-const game = require("./routes/game");
+const game = require("./routes/Game");
 
 const app = express();
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
@@ -27,6 +27,7 @@ app.use((req, res, next) => {
     next();
   }
 });
+
 
 database();
 
