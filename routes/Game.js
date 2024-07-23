@@ -4,6 +4,7 @@ const GameModels = require("../models/GameDetails");
 const PlayersCordinates = require("../models/PlayersCordinates");
 const bodyParser = require("body-parser");
 router.use(bodyParser.json());
+const { spawn } = require('child_process');
 
 const generateCodeId = () => {
   const characters =
@@ -277,6 +278,85 @@ router.post("/all-matches", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+
+
+router.post('/ai-move', async (req, res) => {
+  const { gameId, player, board } = req.body;
+
+  // Flag to track if the response has already been sent
+  let responseSent = false;
+
+  try {
+    const opponent = player === 1 ? 2 : 1;
+    const pythonProcess = spawn('python3', ['routes/gomoku.py']); // Update the path
+
+    const input = JSON.stringify({ board, player: parseInt(player), opponent });
+
+    pythonProcess.stdin.write(input);
+    pythonProcess.stdin.end();
+
+    let result = '';
+    let errorOccurred = false;
+
+    pythonProcess.stdout.on('data', (data) => {
+      result += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error('Python error:', data.toString());
+      errorOccurred = true;
+      // Send error response only if not already sent
+      if (!responseSent) {
+        responseSent = true;
+        res.status(500).json({ error: 'Error in Python script' });
+      }
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python script exited with code ${code}`);
+        // Send error response only if not already sent
+        if (!responseSent) {
+          responseSent = true;
+          res.status(500).json({ error: 'Python script exited with error' });
+        }
+        return;
+      }
+
+      if (!errorOccurred) {
+        try {
+          const { board, move, winner } = JSON.parse(result);
+          
+          // Save the move to the game in the database if needed
+          // ...
+
+          // Send success response only if not already sent
+          if (!responseSent) {
+            responseSent = true;
+            res.status(200).json({ board, move, winner });
+          }
+        } catch (error) {
+          console.error('Error parsing result:', error);
+          // Send error response only if not already sent
+          if (!responseSent) {
+            responseSent = true;
+            res.status(500).json({ error: 'Failed to parse AI response' });
+          }
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error calculating AI move:', error);
+    // Send error response only if not already sent
+    if (!responseSent) {
+      responseSent = true;
+      res.status(500).json({ error: 'Failed to calculate AI move' });
+    }
+  }
+});
+
 
  
 module.exports = router;
