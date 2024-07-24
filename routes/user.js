@@ -48,6 +48,7 @@ router.post('/user', async (req, res) => {
 
       // Fetch user information based on decoded data (e.g., userId, email)
       const { userId } = decoded;
+      console.log(userId);
       const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({ status: 'error', message: 'User not found' });

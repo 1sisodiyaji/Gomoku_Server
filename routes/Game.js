@@ -238,13 +238,11 @@ router.get('/check-updates', async (req, res) => {
   try {
     const game = await GameModels.findOne({ gameId });
     if (!game) {
-      return res.status(404).json({ message: 'Game ID not found' });
+      return res.status(401).json({ message: 'Game ID not found' });
     }
 
     let playersCordinate = await PlayersCordinates.findOne({ gameId });
-    if (!playersCordinate) {
-      return res.status(404).json({ message: 'Player coordinates not found' });
-    }
+     
 
     res.status(200).json({ playersCordinate });
   } catch (error) {

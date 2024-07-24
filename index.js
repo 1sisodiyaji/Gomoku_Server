@@ -11,15 +11,12 @@ const app = express();
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(bodyParser.json());
 app.use(cookieParser());
-
-// CORS configuration
-const corsOptions = {
+ 
+// Apply CORS middleware
+app.use(cors({
   origin: "*",  
   credentials: true,
-};
-
-// Apply CORS middleware
-app.use(cors(corsOptions));
+}));
 database();
 // Your routes
 app.use("/api", user);
