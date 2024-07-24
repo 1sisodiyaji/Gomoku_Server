@@ -1,16 +1,16 @@
 const express = require("express");
-const bodyParser = require("body-parser"); 
-const cookieParser = require("cookie-parser"); 
+const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 const cors = require("cors"); // Import the cors package
 require("dotenv").config();
-const database = require('./config/Database'); 
+const database = require('./config/Database');
 const user = require("./routes/user");
 const game = require("./routes/Game");
 
 const app = express();
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(bodyParser.json());
-app.use(cookieParser()); 
+app.use(cookieParser());
 
 // CORS configuration
 const allowedOrigins = ["https://gomoku-gray.vercel.app", "http://localhost:3000"];
@@ -31,9 +31,7 @@ const corsOptions = {
 // Apply CORS middleware
 app.use(cors(corsOptions));
 
-// Ensure CORS middleware is applied before your routes
-database();
-
+// Your routes
 app.use("/api", user);
 app.use("/game", game);
 
