@@ -20,7 +20,7 @@ const corsOptions = {
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
-
+database();
 // Your routes
 app.use("/api", user);
 app.use("/game", game);
