@@ -1,7 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
-const cors = require("cors"); // Import the cors package
+const cors = require("cors");
 require("dotenv").config();
 const database = require('./config/Database');
 const user = require("./routes/user");
@@ -13,16 +13,8 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 
 // CORS configuration
-const allowedOrigins = ["https://gomoku-gray.vercel.app", "http://localhost:3000"];
-
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: "*", // Allow requests from any origin
   methods: "GET, POST, PUT, DELETE, OPTIONS",
   allowedHeaders: "Content-Type, Authorization",
   credentials: true,
