@@ -14,9 +14,7 @@ app.use(cookieParser());
 
 // CORS configuration
 const corsOptions = {
-  origin: "*", // Allow requests from any origin
-  methods: "GET, POST, PUT, DELETE, OPTIONS",
-  allowedHeaders: "Content-Type, Authorization",
+  origin: "*",  
   credentials: true,
 };
 
