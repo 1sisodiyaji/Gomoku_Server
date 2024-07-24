@@ -92,7 +92,7 @@ router.post("/register", async (req, res) => {
       throw error;
     });
     const token = jwt.sign(
-      { userId: savedUser._id, email: savedUser.email },
+      { userId: savedUser._id, name: savedUser.name },
       process.env.JWT_SECRET_KEY,
       {
         expiresIn: "1y", // Token expiration time
@@ -135,7 +135,7 @@ router.post("/signin", async (req, res) => {
       return res.json({ status: "error", message: "Invalid password." });
     }
     const token = jwt.sign(
-      {userId: user._id ,  username: user.name },
+      {userId: user._id ,  name: user.name },
       process.env.JWT_SECRET_KEY,
       {
         expiresIn: "1y",
@@ -174,7 +174,7 @@ router.post("/saveuserData", async (req, res) => {
     // Create JWT token function
     const createToken = (user) => {
       return jwt.sign(
-        { userId: user._id, email: user.email },
+        { userId: user._id, name: user.name },
         process.env.JWT_SECRET_KEY,
         { expiresIn: "1y" }
       );

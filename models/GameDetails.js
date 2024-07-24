@@ -31,7 +31,7 @@ const gameSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Win','Lose','waiting' , 'playing'],
+    enum: ['Win','waiting' , 'playing'],
     default: 'waiting'
   },
   winner : {

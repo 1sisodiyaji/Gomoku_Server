@@ -1,92 +1,110 @@
 import sys
 import json
-import numpy as np
-import time
 
-BOARD_SIZE = 15
+# Constants for board state
+EMPTY = 0
+PLAYER = 1
+OPPONENT = 2
 
-def create_board():
-    return np.zeros((BOARD_SIZE, BOARD_SIZE), dtype=np.int8)
+def evaluate_line(line, player, opponent):
+    score = 0
+    count_player = line.count(player)
+    count_opponent = line.count(opponent)
+    
+    if count_player > 0 and count_opponent > 0:
+        return 0  # Blocked line
+    if count_player == 5:
+        score += 10000
+    elif count_player == 4:
+        score += 1000
+    elif count_player == 3:
+        score += 100
+    elif count_player == 2:
+        score += 10
+    elif count_player == 1:
+        score += 1
 
-def check_winner(board, player):
-    for row in range(BOARD_SIZE):
-        for col in range(BOARD_SIZE):
-            if (col <= BOARD_SIZE - 5 and np.all(board[row, col:col+5] == player) or
-                row <= BOARD_SIZE - 5 and np.all(board[row:row+5, col] == player) or
-                row <= BOARD_SIZE - 5 and col <= BOARD_SIZE - 5 and np.all([board[row+i, col+i] == player for i in range(5)]) or
-                row >= 4 and col <= BOARD_SIZE - 5 and np.all([board[row-i, col+i] == player for i in range(5)])):
-                return True
-    return False
+    if count_opponent == 5:
+        score -= 10000
+    elif count_opponent == 4:
+        score -= 1000
+    elif count_opponent == 3:
+        score -= 100
+    elif count_opponent == 2:
+        score -= 10
+    elif count_opponent == 1:
+        score -= 1
+        
+    return score
 
-def minimax(board, depth, alpha, beta, is_maximizing, player, opponent):
-    if check_winner(board, player):
-        return 1 if is_maximizing else -1
-    elif check_winner(board, opponent):
-        return -1 if is_maximizing else 1
-    elif np.all(board != 0):
-        return 0
+def evaluate_board(board, player, opponent):
+    score = 0
+    rows = len(board)
+    cols = len(board[0])
+    
+    # Horizontal lines
+    for row in board:
+        for i in range(cols - 4):
+            line = row[i:i+5]
+            score += evaluate_line(line, player, opponent)
+    
+    # Vertical lines
+    for col in range(cols):
+        for i in range(rows - 4):
+            line = [board[i+j][col] for j in range(5)]
+            score += evaluate_line(line, player, opponent)
+    
+    # Diagonal lines
+    for r in range(rows - 4):
+        for c in range(cols - 4):
+            line = [board[r+i][c+i] for i in range(5)]
+            score += evaluate_line(line, player, opponent)
+    
+    for r in range(rows - 4):
+        for c in range(4, cols):
+            line = [board[r+i][c-i] for i in range(5)]
+            score += evaluate_line(line, player, opponent)
+    
+    return score
 
-    if is_maximizing:
-        max_eval = -float('inf')
-        for row in range(BOARD_SIZE):
-            for col in range(BOARD_SIZE):
-                if board[row, col] == 0:
-                    board[row, col] = player
-                    eval = minimax(board, depth + 1, alpha, beta, False, player, opponent)
-                    board[row, col] = 0
-                    max_eval = max(max_eval, eval)
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
-                        break
-        return max_eval
-    else:
-        min_eval = float('inf')
-        for row in range(BOARD_SIZE):
-            for col in range(BOARD_SIZE):
-                if board[row, col] == 0:
-                    board[row, col] = opponent
-                    eval = minimax(board, depth + 1, alpha, beta, True, player, opponent)
-                    board[row, col] = 0
-                    min_eval = min(min_eval, eval)
-                    beta = min(beta, eval)
-                    if beta <= alpha:
-                        break
-        return min_eval
-
-def best_move(board, player, opponent, max_depth=5, timeout=5):
-    start_time = time.time()
+def find_best_move(board, player, opponent):
+    rows = len(board)
+    cols = len(board[0])
     best_score = -float('inf')
-    move = None
-    for depth in range(1, max_depth + 1):
-        for row in range(BOARD_SIZE):
-            for col in range(BOARD_SIZE):
-                if board[row, col] == 0:
-                    board[row, col] = player
-                    score = minimax(board, 0, -float('inf'), float('inf'), False, player, opponent)
-                    board[row, col] = 0
-                    if score > best_score:
-                        best_score = score
-                        move = (row, col)
-        if time.time() - start_time > timeout:
-            break
-    return move
+    best_move = None
+    
+    for r in range(rows):
+        for c in range(cols):
+            if board[r][c] == EMPTY:
+                board[r][c] = player
+                score = evaluate_board(board, player, opponent)
+                board[r][c] = EMPTY
+                if score > best_score:
+                    best_score = score
+                    best_move = (r, c)
+    
+    if best_move is None:
+        return {'error': 'No valid moves left'}
+    
+    return {'row': best_move[0], 'col': best_move[1]}
 
-if __name__ == '__main__':
-    data = json.loads(sys.stdin.read())
-    board = np.array(data['board'])
-    player = data['player']
-    opponent = data['opponent']
-    move = best_move(board, player, opponent)
-    board[move[0]][move[1]] = player
-    winner = None
-    if check_winner(board, player):
-        winner = player
-    elif check_winner(board, opponent):
-        winner = opponent
-    result = {
-        'board': board.tolist(),
-        'move': move,
-        'winner': winner
-    }
-    sys.stdout.write(json.dumps(result))
-    sys.stdout.flush()
+def main():
+    try:
+        # Read input from stdin
+        input_data = sys.stdin.read()
+        data = json.loads(input_data)
+        
+        board = data['board']
+        player = data['player']
+        opponent = data['opponent']
+        
+        # Find the next move
+        result = find_best_move(board, player, opponent)
+        
+        # Output the result as JSON
+        print(json.dumps(result))
+    except Exception as e:
+        print(json.dumps({'error': str(e)}))
+
+if __name__ == "__main__":
+    main()

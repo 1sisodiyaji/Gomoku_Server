@@ -8,7 +8,7 @@ const { spawn } = require('child_process');
 
 const generateCodeId = () => {
   const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-1123456789";
   let result = "";
   for (let i = 0; i < 6; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
@@ -46,9 +46,8 @@ router.post("/check-game-id", async (req, res) => {
   const { gameId, playerName2, id } = req.body;
   if (!gameId || !playerName2 || !id) {
     return res.status(400).json({
-      message: `${
-        !gameId ? "GameId" : !playerName2 ? "player2" : "Player ID"
-      } is missing`,
+      message: `${!gameId ? "GameId" : !playerName2 ? "player2" : "Player ID"
+        } is missing`,
       status: false,
     });
   }
@@ -72,7 +71,7 @@ router.post("/check-game-id", async (req, res) => {
     game.playerName2ID = id;
     game.status = 'playing';
     await game.save();
-   
+
     res.status(200).json({ game });
   } catch (error) {
     console.log("game id don't match");
@@ -84,27 +83,26 @@ router.post("/check-game-id", async (req, res) => {
 router.get("/game-details", async (req, res) => {
   const { gameId } = req.query;
   if (!gameId) {
-    return res.status(400).json({ status: false, message: "Game ID is required"});
+    return res.status(400).json({ status: false, message: "Game ID is required" });
   }
 
   try {
     const gameDetails = await GameModels.findOne({ gameId });
     if (!gameDetails) {
-      return res.status(404).json({status: false , message: "Game details not found"});
-    } 
-    return res.status(200).json({status: true , message: "Fetched Suuccessfully" , gameDetails});
+      return res.status(404).json({ status: false, message: "Game details not found" });
+    }
+    return res.status(200).json({ status: true, message: "Fetched Suuccessfully", gameDetails });
 
   } catch (error) {
-    res.status(500).json({status: false,message: "Internal server error"});
+    res.status(500).json({ status: false, message: "Internal server error" });
   }
 });
 
- 
+
 //user cordinates as which cordinate should be saved
 router.post("/store-coordinate", async (req, res) => {
   const { gameId, row, col, currentPlayer } = req.body;
-
-  if (!gameId || row === undefined || col === undefined || currentPlayer === undefined) {
+ if (!gameId || row === undefined || col === undefined || currentPlayer === undefined) {
     return res.status(400).json({
       message: "Missing required fields (gameId, row, col, currentPlayer)",
       status: false,
@@ -124,9 +122,9 @@ router.post("/store-coordinate", async (req, res) => {
     if (!playersCordinate) {
       playersCordinate = new PlayersCordinates({ gameId });
     }
-
     // Check if the coordinate is already selected
-    if (playersCordinate.player1Input.some((p) => p.row === row && p.col === col) || playersCordinate.player2Input.some((p) => p.row === row && p.col === col)) {
+    if (playersCordinate.player1Input.some((p) => p.row === row && p.col === col) || 
+        playersCordinate.player2Input.some((p) => p.row === row && p.col === col)) {
       return res.status(400).json({
         message: "Coordinate is already selected",
         status: false,
@@ -153,8 +151,10 @@ router.post("/store-coordinate", async (req, res) => {
       } else {
         game.winner = game.playerName2ID;
       }
+
       await game.save();
       await playersCordinate.save();
+
       return res.status(201).json({
         message: "Game is won by player " + winner,
         status: true,
@@ -162,8 +162,9 @@ router.post("/store-coordinate", async (req, res) => {
     }
 
     playersCordinate.currentPlayer = playersCordinate.player1Input.length === playersCordinate.player2Input.length ? 1 : 2;
-    await playersCordinate.save();
-
+ 
+     await playersCordinate.save();
+    
     res.status(201).json({
       message: "Coordinates stored successfully",
       status: true,
@@ -256,23 +257,16 @@ router.post("/all-matches", async (req, res) => {
   const { id } = req.body;
   try {
     const ID = id;
-    
+
     const games = await GameModels.find({
       $or: [{ AuthorID: ID }, { playerName2ID: ID }]
     })
-    .populate('playerName1', 'name')
-    .populate('playerName2', 'name')
-    .populate('AuthorID', 'name')
-    .populate('winner', 'name')
-    .populate('createdOn', 'createdOn')
-    .populate('status', 'status');
-
-    if (!games.length) {
-      return res
-        .status(404)
-        .json({ message: "No games found for this author" });
-    }
-    console.log("your game is " + games);
+      .populate('playerName1', 'name')
+      .populate('playerName2', 'name')
+      .populate('AuthorID', 'name')
+      .populate('winner', 'name')
+      .populate('createdOn', 'createdOn')
+      .populate('status', 'status');
     res.status(200).json({ game: games });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -281,9 +275,42 @@ router.post("/all-matches", async (req, res) => {
 
 
 
+//play with ai 
+router.post('/generate-game-id-ai', async (req, res) => {
+  const { playerName1, id, playerName2, playerName2ID } = req.body;
+  if (!playerName1 || !id || !playerName2 || !playerName2ID) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  try {
+    const newGameId = generateCodeId();
+    const newGame = new GameModels({
+      gameId: newGameId,
+      playerName1,
+      createdOn: new Date(),
+      createdBy: playerName1,
+      status: 'playing',
+      AuthorID: id,
+      playerName2: playerName2,
+      playerName2ID: playerName2ID
+    });
+    const saved =  await newGame.save();
+
+    const playersCordinate = new PlayersCordinates({
+      GameDetails: saved._id,
+      gameId: saved.gameId,
+    });
+    await playersCordinate.save();
+
+    res.status(201).json({ newGame });
+  } catch (error) {
+    console.error('Error generating game ID:', error.message);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 router.post('/ai', (req, res) => {
   const { board, player, opponent } = req.body;
-  const pythonProcess = spawn('python3', ['routes/gomoku.py']);
+   const pythonProcess = spawn('python3', ['routes/gomoku.py']);
   pythonProcess.stdin.write(JSON.stringify({ board, player, opponent }));
   pythonProcess.stdin.end();
 
@@ -294,9 +321,18 @@ router.post('/ai', (req, res) => {
   });
 
   pythonProcess.stdout.on('end', () => {
-    const result = JSON.parse(dataString);
-    console.log(result);
-    res.json(result);
+    try {
+      const result = JSON.parse(dataString);
+      if (result.error) {
+        res.status(500).json({ error: result.error });
+      } else {
+        res.json(result);
+      }
+    } catch (err) {
+      console.error(`Error parsing JSON: ${err}`);
+      console.error(`Original data: ${dataString}`);
+      res.status(500).json({ error: 'Failed to parse JSON from Python script' });
+    }
   });
 
   pythonProcess.stderr.on('data', (data) => {
@@ -308,5 +344,5 @@ router.post('/ai', (req, res) => {
   });
 });
 
- 
+
 module.exports = router;
