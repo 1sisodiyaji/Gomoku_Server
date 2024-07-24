@@ -1,7 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const cookieParser = require("cookie-parser");
-const cors = require("cors");
+const cookieParser = require("cookie-parser"); 
 require("dotenv").config();
 const database = require('./config/Database');
 const user = require("./routes/user");
@@ -13,10 +12,27 @@ app.use(bodyParser.json());
 app.use(cookieParser());
  
 // Apply CORS middleware
-app.use(cors({
-  origin: "*",  
-  credentials: true,
-}));
+const allowedOrigins = ['https://gomoku-gray.vercel.app','http://localhost:3000'];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+
 database();
 // Your routes
 app.use("/api", user);
