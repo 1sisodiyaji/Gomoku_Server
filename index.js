@@ -12,15 +12,8 @@ app.use(bodyParser.json());
 app.use(cookieParser());
  
 // Apply CORS middleware
-const allowedOrigins = ['https://gomoku-gray.vercel.app','http://localhost:3000'];
-
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
@@ -31,7 +24,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
 
 database();
 // Your routes

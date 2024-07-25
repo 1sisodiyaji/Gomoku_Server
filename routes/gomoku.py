@@ -7,12 +7,13 @@ PLAYER = 1
 OPPONENT = 2
 
 def evaluate_line(line, player, opponent):
-    score = 0
     count_player = line.count(player)
     count_opponent = line.count(opponent)
     
     if count_player > 0 and count_opponent > 0:
         return 0  # Blocked line
+
+    score = 0
     if count_player == 5:
         score += 10000
     elif count_player == 4:
@@ -41,7 +42,7 @@ def evaluate_board(board, player, opponent):
     score = 0
     rows = len(board)
     cols = len(board[0])
-    
+
     # Horizontal lines
     for row in board:
         for i in range(cols - 4):
@@ -54,12 +55,13 @@ def evaluate_board(board, player, opponent):
             line = [board[i+j][col] for j in range(5)]
             score += evaluate_line(line, player, opponent)
     
-    # Diagonal lines
+    # Diagonal lines (bottom-right direction)
     for r in range(rows - 4):
         for c in range(cols - 4):
             line = [board[r+i][c+i] for i in range(5)]
             score += evaluate_line(line, player, opponent)
     
+    # Diagonal lines (bottom-left direction)
     for r in range(rows - 4):
         for c in range(4, cols):
             line = [board[r+i][c-i] for i in range(5)]

@@ -275,7 +275,9 @@ router.post("/all-matches", async (req, res) => {
 
 //play with ai 
 router.post('/generate-game-id-ai', async (req, res) => {
+
   const { playerName1, id, playerName2, playerName2ID } = req.body;
+
   if (!playerName1 || !id || !playerName2 || !playerName2ID) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
@@ -306,9 +308,15 @@ router.post('/generate-game-id-ai', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 router.post('/ai', (req, res) => {
   const { board, player, opponent } = req.body;
-   const pythonProcess = spawn('python3', ['routes/gomoku.py']);
+  console.log(player);
+  if(!board || !player || !opponent) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+  
+  const pythonProcess = spawn('python3', ['routes/gomoku.py']);
   pythonProcess.stdin.write(JSON.stringify({ board, player, opponent }));
   pythonProcess.stdin.end();
 
