@@ -5,6 +5,7 @@ require("dotenv").config();
 const database = require('./config/Database');
 const user = require("./routes/user");
 const game = require("./routes/Game");
+const cors = require('cors');
 
 const app = express();
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
@@ -12,18 +13,11 @@ app.use(bodyParser.json());
 app.use(cookieParser());
  
 // Apply CORS middleware
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
+app.use(cors({
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 database();
 // Your routes
